@@ -1,4 +1,4 @@
-// plugins/english/novelfire.ts
+// plugins/english/novelfirefix.ts
 import { load } from "cheerio";
 import { fetchApi } from "@libs/fetch";
 import { NovelStatus } from "@libs/novelStatus";
@@ -7,9 +7,9 @@ import { defaultCover } from "@/types/constants";
 import { storage } from "@libs/storage";
 var NovelFire = class {
   constructor() {
-    this.id = "novelfire";
-    this.name = "Novel Fire";
-    this.version = "1.1.7";
+    this.id = "novelfirefix";
+    this.name = "Novel Fire Fixed";
+    this.version = "1.2.0";
     this.icon = "src/en/novelfire/icon.png";
     this.site = "https://novelfire.net/";
     this.novelList = [];
@@ -235,7 +235,6 @@ var NovelFire = class {
     }).get().filter((novel) => novel !== null);
   }
   async getAllChapters(novelPath, post_id) {
-    const allChapters = [];
     const url = `${this.site}listChapterDataAjax?post_id=${post_id}`;
     const result = await fetchApi(url);
     const body = await result.text();
@@ -247,7 +246,16 @@ var NovelFire = class {
     }
     const json = JSON.parse(body);
     const chapters = json.data.map((index) => {
-      const chapterName = load(index.title || index.slug).text();
+      let chapterName = "";
+      if (index.title && index.title.trim()) {
+        chapterName = load(index.title).text().trim();
+      }
+      if (!chapterName && index.slug && index.slug.trim()) {
+        chapterName = index.slug.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase()).trim();
+      }
+      if (!chapterName) {
+        chapterName = "Chapter " + index.n_sort;
+      }
       const chapterPath = `${novelPath}/chapter-${index.n_sort}`;
       const sortNumber = index.n_sort;
       if (!chapterPath) return null;
@@ -367,7 +375,7 @@ var NovelFire = class {
     const body = await result.text();
     const loadedCheerio = load(body);
     const chapters = loadedCheerio(".chapter-list li").map((index, ele) => {
-      const chapterName = loadedCheerio(ele).find("a").attr("title") || "No Title Found";
+      const chapterName = loadedCheerio(ele).find("a").attr("title") || loadedCheerio(ele).find("a").text().trim() || "No Title Found";
       const chapterPath = loadedCheerio(ele).find("a").attr("href");
       if (!chapterPath) return null;
       return {
@@ -414,7 +422,7 @@ var NovelFire = class {
     }).get().filter((novel) => novel !== null);
   }
 };
-var novelfire_default = new NovelFire();
+var novelfirefix_default = new NovelFire();
 var NovelFireThrottlingError = class extends Error {
   constructor(message = "Novel Fire is rate limiting requests") {
     super(message);
@@ -437,5 +445,5 @@ function deSlash(url) {
   return clean;
 }
 export {
-  novelfire_default as default
+  novelfirefix_default as default
 };
